@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: dbcalm-marketing
+Version: 0.0.1
+Summary: DBCalm marketing website and documentation
+Requires-Python: >=3.11
+License-File: LICENSE
+Provides-Extra: docs
+Requires-Dist: sphinx>=7.0.0; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=2.0.0; extra == "docs"
+Requires-Dist: sphinxcontrib-redoc>=1.6.0; extra == "docs"
+Requires-Dist: myst-parser>=2.0.0; extra == "docs"
+Requires-Dist: sphinx-autobuild>=2021.3.14; extra == "docs"
+Requires-Dist: setuptools; extra == "docs"
+Dynamic: license-file

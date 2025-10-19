@@ -1,0 +1,9 @@
+LICENSE
+README.md
+conf.py
+pyproject.toml
+dbcalm_marketing.egg-info/PKG-INFO
+dbcalm_marketing.egg-info/SOURCES.txt
+dbcalm_marketing.egg-info/dependency_links.txt
+dbcalm_marketing.egg-info/requires.txt
+dbcalm_marketing.egg-info/top_level.txt
