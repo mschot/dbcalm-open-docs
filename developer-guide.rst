@@ -175,7 +175,7 @@ You'll see a certificate warning:
 1. Click **"Advanced"** (or **"Show Details"**)
 2. Click **"Proceed to dbcalm.localhost"** (or **"Accept the Risk and Continue"**)
 
-This is a required one-time step before you can use the API.
+This is a required one-time step for development setups using self-signed certificates.
 
 Access the API
 ~~~~~~~~~~~~~~

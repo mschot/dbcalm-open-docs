@@ -136,9 +136,9 @@ Create an admin user for accessing the API:
 
 .. code-block:: bash
 
-   sudo -u dbcalm dbcalm users add
+   sudo dbcalm users add <username>
 
-Follow the prompts to set username and password.
+Replace ``<username>`` with your desired username. You will be prompted to set a password.
 
 Step 4: Start Services
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -192,9 +192,8 @@ You'll see a certificate warning. This is expected because the API uses a self-s
 2. Click **"Proceed to dbcalm.localhost"** (or **"Accept the Risk and Continue"**)
 
 .. important::
-   This is a required one-time step. You must accept the certificate before you can use the API.
-   This is safe for development. For production, see the Configuration Guide for setting up
-   Let's Encrypt certificates.
+   This is a required one-time step for development setups. You must accept the certificate before you can use the API.
+   For production use, configure valid SSL certificates to avoid this requirement. See the Configuration Guide for details.
 
 Access API Documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~

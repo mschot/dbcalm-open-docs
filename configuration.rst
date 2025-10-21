@@ -40,16 +40,6 @@ After updating, restart the API:
 
    sudo systemctl restart dbcalm-api
 
-File Permissions
-~~~~~~~~~~~~~~~~
-
-The credentials file must be readable by the ``mysql`` user:
-
-.. code-block:: bash
-
-   sudo chown mysql:dbcalm /etc/dbcalm/credentials.cnf
-   sudo chmod 640 /etc/dbcalm/credentials.cnf
-
 SSL Certificates
 ----------------
 
@@ -65,131 +55,40 @@ Valid for ``dbcalm.localhost``. This is safe for development and testing but wil
 when accessing the API. To proceed, click "Advanced" (or similar) and then "Proceed to localhost"
 (or "Accept the Risk") in your browser.
 
-Custom Development Certificate (mkcert)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Trusted Development Certificates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For development with custom domains and trusted certificates:
+For development environments where you want to avoid browser warnings, you can use **mkcert** to generate
+locally-trusted certificates. See the `mkcert documentation <https://github.com/FiloSottile/mkcert>`_ for
+installation and usage instructions.
 
-Install mkcert:
+After generating your certificates with mkcert, place them in:
 
-.. code-block:: bash
+* ``/etc/dbcalm/ssl/fullchain-cert.pem``
+* ``/etc/dbcalm/ssl/private-key.pem``
 
-   # Debian/Ubuntu
-   sudo apt install mkcert
-
-   # RHEL/CentOS/Fedora
-   sudo yum install mkcert  # or dnf install mkcert
-
-Install local certificate authority:
-
-.. code-block:: bash
-
-   mkcert -install
-
-Generate certificate:
-
-.. code-block:: bash
-
-   mkcert -cert-file /etc/dbcalm/ssl/fullchain-cert.pem \
-          -key-file /etc/dbcalm/ssl/private-key.pem \
-          localhost 127.0.0.1 dbcalm.local
-
-Set permissions:
-
-.. code-block:: bash
-
-   sudo chown dbcalm:dbcalm /etc/dbcalm/ssl/*
-   sudo chmod 640 /etc/dbcalm/ssl/*
-
-Restart API:
+Then restart the API:
 
 .. code-block:: bash
 
    sudo systemctl restart dbcalm-api
 
-Production (Let's Encrypt)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Production SSL Certificates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For production deployments with a real domain name:
+For production deployments, use **Let's Encrypt** to obtain free, trusted SSL certificates for your domain.
+See the `Let's Encrypt documentation <https://letsencrypt.org/getting-started/>`_ for detailed instructions.
 
-Install Certbot:
+After obtaining your certificates, place them in:
 
-.. code-block:: bash
+* ``/etc/dbcalm/ssl/fullchain-cert.pem`` (your certificate + chain)
+* ``/etc/dbcalm/ssl/private-key.pem`` (your private key)
 
-   # Debian/Ubuntu
-   sudo apt install certbot
-
-   # RHEL/CentOS
-   sudo yum install certbot
-
-   # Fedora
-   sudo dnf install certbot
-
-Stop DBCalm temporarily (certbot needs port 443):
+Then restart the API:
 
 .. code-block:: bash
 
-   sudo systemctl stop dbcalm-api
-
-Obtain certificate:
-
-.. code-block:: bash
-
-   sudo certbot certonly --standalone -d yourdomain.com
-
-Copy to DBCalm:
-
-.. code-block:: bash
-
-   sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem \
-           /etc/dbcalm/ssl/fullchain-cert.pem
-   sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem \
-           /etc/dbcalm/ssl/private-key.pem
-
-Set permissions:
-
-.. code-block:: bash
-
-   sudo chown dbcalm:dbcalm /etc/dbcalm/ssl/*
-   sudo chmod 640 /etc/dbcalm/ssl/*
-
-Start API:
-
-.. code-block:: bash
-
-   sudo systemctl start dbcalm-api
-
-Certificate Auto-Renewal
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Create renewal hook to automatically update DBCalm certificates:
-
-.. code-block:: bash
-
-   sudo nano /etc/letsencrypt/renewal-hooks/deploy/dbcalm-update.sh
-
-Add:
-
-.. code-block:: bash
-
-   #!/bin/bash
-   cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem /etc/dbcalm/ssl/fullchain-cert.pem
-   cp /etc/letsencrypt/live/yourdomain.com/privkey.pem /etc/dbcalm/ssl/private-key.pem
-   chown dbcalm:dbcalm /etc/dbcalm/ssl/*
-   chmod 640 /etc/dbcalm/ssl/*
-   systemctl restart dbcalm-api
-
-Make executable:
-
-.. code-block:: bash
-
-   sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/dbcalm-update.sh
-
-Test renewal:
-
-.. code-block:: bash
-
-   sudo certbot renew --dry-run
+   sudo systemctl restart dbcalm-api
 
 API Configuration
 -----------------
@@ -257,108 +156,24 @@ After editing ``config.yml``:
 
    sudo systemctl restart dbcalm-api
 
-Environment Variables (Alternative)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Instead of using ``config.yml``, you can configure via environment variables:
-
-.. code-block:: bash
-
-   sudo systemctl edit dbcalm-api
-
-Add:
-
-.. code-block:: ini
-
-   [Service]
-   Environment="DBCALM_CORS_ORIGINS=[\"https://yourdomain.com\"]"
-   Environment="DBCALM_API_HOST=0.0.0.0"
-   Environment="DBCALM_API_PORT=8335"
-   Environment="DBCALM_LOG_LEVEL=info"
-
-Reload and restart:
-
-.. code-block:: bash
-
-   sudo systemctl daemon-reload
-   sudo systemctl restart dbcalm-api
-
 Backup Storage
 --------------
-
-Default Location
-~~~~~~~~~~~~~~~~
 
 Backups are stored in: ``/var/lib/dbcalm/backups/``
 
 This directory is created automatically with proper permissions.
 
-Storage Requirements
-~~~~~~~~~~~~~~~~~~~~
-
-* **Full backup**: Approximately the size of your database
-* **Incremental backup**: Only stores changed data since the base backup
-* Plan storage based on your retention policy
-
-Example for a 10GB database with daily full backups retained for 7 days:
-
-* Minimum: ~70GB
-* Recommended: ~100GB (with buffer)
-
-Custom Storage Location
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. note::
-   Configuration for custom backup storage location will be available in a future release.
-
-For now, you can use a symlink:
-
-.. code-block:: bash
-
-   # Stop services
-   sudo systemctl stop dbcalm-api
-
-   # Move existing backups (if any)
-   sudo mv /var/lib/dbcalm/backups /mnt/external-storage/dbcalm-backups
-
-   # Create symlink
-   sudo ln -s /mnt/external-storage/dbcalm-backups /var/lib/dbcalm/backups
-
-   # Set permissions
-   sudo chown -R mysql:dbcalm /mnt/external-storage/dbcalm-backups
-   sudo chmod -R 2775 /mnt/external-storage/dbcalm-backups
-
-   # Start services
-   sudo systemctl start dbcalm-api
-
 Security
 --------
 
-Firewall Configuration
-~~~~~~~~~~~~~~~~~~~~~~
+Network Access
+~~~~~~~~~~~~~~
 
-Allow API port access:
+The API runs on port **8335** by default. This port must be accessible to any service or user that needs to call the API.
 
-.. code-block:: bash
-
-   # UFW (Ubuntu/Debian)
-   sudo ufw allow 8335/tcp
-   sudo ufw reload
-
-   # firewalld (RHEL/CentOS/Fedora)
-   sudo firewall-cmd --permanent --add-port=8335/tcp
-   sudo firewall-cmd --reload
-
-Restrict to Specific IPs:
-
-.. code-block:: bash
-
-   # UFW example - only allow from specific IP
-   sudo ufw allow from 10.0.0.0/24 to any port 8335
-
-   # firewalld example
-   sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/24" port port="8335" protocol="tcp" accept'
-   sudo firewall-cmd --reload
+.. warning::
+   Access should be restricted and not exposed to the entire internet. Limit access to specific IP addresses,
+   such as your own IP or your organization's network range, using your firewall configuration.
 
 File Permissions
 ~~~~~~~~~~~~~~~~
@@ -441,13 +256,13 @@ Verify certificate files exist and are readable:
 
 .. code-block:: bash
 
-   sudo -u dbcalm ls -l /etc/dbcalm/ssl/
+   sudo ls -l /etc/dbcalm/ssl/
 
 Check certificate details:
 
 .. code-block:: bash
 
-   sudo -u dbcalm openssl x509 -in /etc/dbcalm/ssl/fullchain-cert.pem -text -noout | head -20
+   sudo openssl x509 -in /etc/dbcalm/ssl/fullchain-cert.pem -text -noout | head -20
 
 Permission Denied Errors
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -471,26 +286,36 @@ Fix ownership if needed:
 Command Services Not Running
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The command services (``dbcalm-cmd`` and ``dbcalm-mariadb-cmd``) run as dependencies of the main API service.
+DBCalm consists of three independent services:
 
-Check dependencies:
+* ``dbcalm-api`` - The main API server
+* ``dbcalm-cmd`` - Command service for general operations
+* ``dbcalm-mariadb-cmd`` - Command service for MariaDB-specific operations
+
+Check status of all services:
 
 .. code-block:: bash
 
-   systemctl list-dependencies dbcalm-api
+   sudo systemctl status dbcalm-api dbcalm-cmd dbcalm-mariadb-cmd
 
 Restart all services:
 
 .. code-block:: bash
 
-   sudo systemctl restart dbcalm-api
+   sudo systemctl restart dbcalm-api dbcalm-cmd dbcalm-mariadb-cmd
 
-This will automatically restart the command services as well.
+Or restart individually:
+
+.. code-block:: bash
+
+   sudo systemctl restart dbcalm-api
+   sudo systemctl restart dbcalm-cmd
+   sudo systemctl restart dbcalm-mariadb-cmd
 
 Port Already in Use
 ~~~~~~~~~~~~~~~~~~~
 
-If port 8335 is already in use, you can change the API port:
+If port 8335 is already in use, you can change the API port.
 
 Edit ``/etc/dbcalm/config.yml``:
 
@@ -498,22 +323,8 @@ Edit ``/etc/dbcalm/config.yml``:
 
    api_port: 8336  # Use different port
 
-Or set via environment variable:
-
-.. code-block:: bash
-
-   sudo systemctl edit dbcalm-api
-
-Add:
-
-.. code-block:: ini
-
-   [Service]
-   Environment="DBCALM_API_PORT=8336"
-
 Then restart:
 
 .. code-block:: bash
 
-   sudo systemctl daemon-reload
    sudo systemctl restart dbcalm-api
