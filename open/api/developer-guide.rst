@@ -352,12 +352,29 @@ The pre-commit hook automatically runs linting and tests. Install it:
 Building Binaries
 ~~~~~~~~~~~~~~~~~
 
+Build standalone executables for production deployment:
+
 .. code-block:: bash
 
-   # Build all binaries
-   pyinstaller dbcalm.py
-   pyinstaller dbcalm-mariadb-cmd.py
-   pyinstaller dbcalm-cmd.py
+   # Build main API server binary (includes authentication dependencies)
+   pyinstaller --onefile --hidden-import passlib.handlers.bcrypt --clean \
+     --workpath=./build/pyinstaller --distpath=dist/production dbcalm.py
+
+   # Build generic command service binary
+   pyinstaller --onefile --clean \
+     --workpath=./build/pyinstaller --distpath=dist/production dbcalm-cmd.py
+
+   # Build MariaDB command service binary
+   pyinstaller --onefile --clean \
+     --workpath=./build/pyinstaller --distpath=dist/production dbcalm-mariadb-cmd.py
+
+Binaries will be created in ``dist/production/``:
+
+* ``dist/production/dbcalm`` - Main API server
+* ``dist/production/dbcalm-cmd`` - Generic command service
+* ``dist/production/dbcalm-mariadb-cmd`` - MariaDB command service
+
+Note: The ``--hidden-import passlib.handlers.bcrypt`` flag is required for dbcalm.py to include password hashing dependencies.
 
 Code Style Guidelines
 ---------------------

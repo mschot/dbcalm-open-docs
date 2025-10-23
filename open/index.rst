@@ -3,8 +3,16 @@ DBCalm Open Source
 
 Welcome to DBCalm Open Source documentation. Self-host your own MySQL backup solution with full control over your data.
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Components:
+   :hidden:
+
+   api/index
+   frontend/index
+
 Backend API
-~~~~~~~~~~~
+-----------
 
 Comprehensive backend API for database backup management.
 
@@ -13,18 +21,10 @@ Comprehensive backend API for database backup management.
 * **Restore Management**: Easy restoration of backups to any point in time
 * **Client Management**: Multi-client support for managing multiple database instances
 
-Getting Started
----------------
-
-1. **Installation**: :doc:`api/installation`
-2. **Configuration**: :doc:`api/configuration`
-3. **API Reference**: :doc:`api/api-specification`
-4. **Development Guide**: :doc:`api/developer-guide`
-
-:doc:`View Documentation → <api/index>`
+:doc:`View API Documentation → <api/index>`
 
 Frontend (Coming Soon)
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
 Web-based interface for monitoring and managing your backups.
 
@@ -35,12 +35,13 @@ Web-based interface for monitoring and managing your backups.
 
 :doc:`View Frontend Documentation → <frontend/index>`
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Documentation:
+Getting Started
+---------------
 
-   api/index
-   frontend/index
+1. **Installation**: :doc:`api/installation`
+2. **Configuration**: :doc:`api/configuration`
+3. **API Reference**: :doc:`api/api-specification`
+4. **Development Guide**: :doc:`api/developer-guide`
 
 Support
 -------

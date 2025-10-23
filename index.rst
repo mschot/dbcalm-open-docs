@@ -3,6 +3,13 @@ DBCalm Documentation
 
 Welcome to DBCalm documentation hub. Choose your product below:
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Documentation:
+   :hidden:
+
+   open/index
+
 Products
 ~~~~~~~~~~~~
 | → `DBCalm Cloud`_

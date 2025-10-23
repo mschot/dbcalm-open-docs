@@ -44,6 +44,11 @@ html_theme_options = {
     "titles_only": False,
 }
 
+# Sidebar configuration - show global navigation tree on all pages
+html_sidebars = {
+    '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html']
+}
+
 # MyST parser configuration
 myst_enable_extensions = [
     "colon_fence",
