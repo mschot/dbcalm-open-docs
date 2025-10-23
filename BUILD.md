@@ -14,8 +14,6 @@
 │   │   └── *.rst               # API documentation files
 │   └── frontend/               # Frontend docs (coming soon)
 │       └── index.rst
-└── agent/                      # Agent docs (coming soon)
-    └── index.rst
 ```
 
 ## Build Commands
@@ -68,7 +66,6 @@ All documentation builds to a single unified location:
 - **API docs**: `/docs/html/open/api/index.html`
 - **API specification (ReDoc)**: `/docs/html/open/api/api-specification.html`
 - **Frontend docs**: `/docs/html/open/frontend/index.html` (coming soon)
-- **Agent docs**: `/docs/html/agent/index.html` (coming soon)
 
 ## Adding New Documentation
 
@@ -78,7 +75,7 @@ All documentation builds to a single unified location:
 2. Update `openapi.json` if needed
 3. Build from root: `cd /docs && make html`
 
-### For New Components (Frontend, Agent, etc.)
+### For New Components (Frontend, etc.)
 
 1. Create directory structure: `/docs/{product}/{component}/`
 2. Add `index.rst` and documentation files
