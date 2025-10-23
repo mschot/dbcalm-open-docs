@@ -1,44 +1,40 @@
 DBCalm Documentation
 ====================
 
-Welcome to DBCalm, a comprehensive database backup and management tool for MariaDB/MySQL databases.
+Welcome to DBCalm documentation hub. Choose your product below:
 
-DBCalm provides a secure, automated solution for database backups with scheduling capabilities,
-restore functionality, and a user-friendly API for managing your database infrastructure.
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   installation
-   configuration
-   api-specification
-   developer-guide
-
-Features
+Products
 --------
 
-* **Automated Backups**: Schedule regular backups of your MariaDB/MySQL databases
-* **Secure API**: OAuth2-based authentication with JWT tokens
-* **Restore Management**: Easy restoration of backups to any point in time
-* **Client Management**: Multi-client support for managing multiple database instances
-* **Process Monitoring**: Track backup and restore operations in real-time
-* **Privilege Separation**: Secure command execution with dedicated service accounts
+.. toctree::
+   :maxdepth: 1
+   :caption: Available Documentation:
 
-Quick Start
+   open/index
+   agent/index
+
+DBCalm Open Source
+~~~~~~~~~~~~~~~~~~
+
+Self-hosted MySQL backup solution for developers and small teams.
+
+* Backend API for database backup management
+* Frontend web interface for monitoring and control
+* Full control of your data on your own servers
+
+:doc:`View Open Source Documentation → <open/index>`
+
+DBCalm Agent
+~~~~~~~~~~~~
+
+Coming Soon - Enterprise agent for multi-server deployments.
+
+:doc:`View Agent Documentation → <agent/index>`
+
+Quick Links
 -----------
 
-For installation instructions, see :doc:`installation`.
-
-For configuration options, see :doc:`configuration`.
-
-For API documentation, see :doc:`api-specification`.
-
-For development setup, see :doc:`developer-guide`.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+* **Open Source API**: :doc:`open/api/index`
+* **Installation Guide**: :doc:`open/api/installation`
+* **Configuration**: :doc:`open/api/configuration`
+* **API Reference**: :doc:`open/api/api-specification`

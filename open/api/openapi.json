@@ -1,0 +1,2717 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DBCalm API",
+    "description": "Database backup and restore management API for MariaDB/MySQL",
+    "contact": {
+      "name": "DBCalm",
+      "url": "https://dbcalm.com/"
+    },
+    "license": {
+      "name": "Business Source License 1.1",
+      "identifier": "BUSL-1.1",
+      "url": "https://github.com/mschot/dbcalm-open-backend/blob/main/LICENSE"
+    },
+    "version": "0.0.1"
+  },
+  "paths": {
+    "/auth/authorize": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Authorize",
+        "operationId": "authorize_auth_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLogin"
+              },
+              "examples": {
+                "user_login": {
+                  "summary": "User login",
+                  "description": "Authenticate with username and password to get authorization code",
+                  "value": {
+                    "username": "admin",
+                    "password": "your-secure-password"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Authorization successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthCodeResponse"
+                },
+                "example": {
+                  "code": "authcode_1729234567"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Issue Token",
+        "operationId": "issue_token_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TokenClientRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TokenAuthCodeRequest"
+                  }
+                ],
+                "title": "Request Data",
+                "description": "Token request - use appropriate grant type"
+              },
+              "examples": {
+                "client_credentials": {
+                  "summary": "Client Credentials Grant",
+                  "description": "Use for machine-to-machine authentication",
+                  "value": {
+                    "grant_type": "client_credentials",
+                    "client_id": "your-client-id",
+                    "client_secret": "your-client-secret"
+                  }
+                },
+                "authorization_code": {
+                  "summary": "Authorization Code Grant",
+                  "description": "Use for user authentication via authorization code",
+                  "value": {
+                    "grant_type": "authorization_code",
+                    "code": "authcode_1234567890"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token issued successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                },
+                "example": {
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbGllbnRfYTFiMmMzZDRlNWY2IiwiZXhwIjoxNzI5MjM4MTY3LCJzY29wZXMiOlsiKiJdfQ.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+                  "token_type": "bearer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backups": {
+      "post": {
+        "tags": [
+          "Backups"
+        ],
+        "summary": "Create Backup",
+        "description": "Create a database backup.\n\n**This is an asynchronous operation** - returns 202 Accepted immediately\nand the backup runs in the background. Use the returned `link` to poll\nfor completion status at `/status/{pid}`.\n\nCreates either a full or incremental backup of the MySQL/MariaDB database.\nFor incremental backups, automatically uses the latest backup as base if\n`from_backup_id` is not specified.\n\n**Requirements:**\n- MySQL/MariaDB server must be running\n- Valid credentials file must exist\n- For incremental backups: at least one previous backup must exist\n\n**Backup ID:**\n- Auto-generated timestamp format: YYYY-MM-DD-HH-MM-SS\n- Or provide custom ID (converted to kebab-case)\n\n**Response:**\n- Returns immediately with 202 Accepted\n- Includes `link` field pointing to `/status/{pid}` for progress tracking\n- Includes `resource_id` (the backup ID)",
+        "operationId": "create_backup_backups_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupRequest"
+              },
+              "examples": {
+                "full_backup": {
+                  "summary": "Full backup with auto-generated ID",
+                  "description": "Create a complete backup with timestamp-based ID",
+                  "value": {
+                    "type": "full"
+                  }
+                },
+                "full_backup_custom_id": {
+                  "summary": "Full backup with custom ID",
+                  "description": "Create a complete backup with custom identifier",
+                  "value": {
+                    "type": "full",
+                    "id": "production-backup-2024-10-18"
+                  }
+                },
+                "incremental_backup": {
+                  "summary": "Incremental backup",
+                  "description": "Create incremental backup from latest base backup",
+                  "value": {
+                    "type": "incremental"
+                  }
+                },
+                "incremental_backup_specific": {
+                  "summary": "Incremental backup from specific base",
+                  "description": "Create incremental backup from specific base backup",
+                  "value": {
+                    "type": "incremental",
+                    "from_backup_id": "2024-10-17-03-00-00"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Backup accepted and started - processing in background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                },
+                "example": {
+                  "status": "running",
+                  "link": "/status/1234",
+                  "pid": "1234",
+                  "resource_id": "2024-10-18-03-00-00"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existing backups found for incremental backup",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "No backups found to create incremental backup from"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable - server configuration issue",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "server_not_running": {
+                    "summary": "MySQL server not running",
+                    "value": {
+                      "detail": "cannot create backup, MySQL/MariaDB server is not running"
+                    }
+                  },
+                  "credentials_missing": {
+                    "summary": "Credentials file missing",
+                    "value": {
+                      "detail": "credentials file not found or missing [client-dbcalm] section"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Backups"
+        ],
+        "summary": "List Backups",
+        "operationId": "list_backups_backups_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter backups using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, from_backup_id, start_time, end_time, process_id",
+              "title": "Query"
+            },
+            "description": "Filter backups using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, from_backup_id, start_time, end_time, process_id",
+            "examples": {
+              "by_id": {
+                "summary": "Filter by ID",
+                "value": "id|2024-10-17-12-00-00"
+              },
+              "by_date_range": {
+                "summary": "Filter by start time",
+                "value": "start_time|gte|2024-10-01T00:00:00"
+              },
+              "by_process_list": {
+                "summary": "Filter by process IDs",
+                "value": "process_id|in|1,2,3"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order results using format 'field|direction'. Valid fields: id, start_time, end_time. Direction: asc or desc",
+              "title": "Order"
+            },
+            "description": "Order results using format 'field|direction'. Valid fields: id, start_time, end_time. Direction: asc or desc",
+            "examples": {
+              "newest_first": {
+                "summary": "Newest first",
+                "value": "start_time|desc"
+              },
+              "oldest_first": {
+                "summary": "Oldest first",
+                "value": "start_time|asc"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of backups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupListResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "2024-10-18-03-00-00",
+                      "start_time": "2024-10-18T03:00:00",
+                      "end_time": "2024-10-18T03:15:32",
+                      "process_id": 1234
+                    },
+                    {
+                      "id": "2024-10-18-09-00-00",
+                      "from_backup_id": "2024-10-18-03-00-00",
+                      "start_time": "2024-10-18T09:00:00",
+                      "end_time": "2024-10-18T09:05:18",
+                      "process_id": 1235
+                    }
+                  ],
+                  "pagination": {
+                    "total": 42,
+                    "page": 1,
+                    "per_page": 25,
+                    "total_pages": 2
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backups/{backup_id}": {
+      "get": {
+        "tags": [
+          "Backups"
+        ],
+        "summary": "Get Backup",
+        "operationId": "get_backup_backups__backup_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "backup_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Backup Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupResponse"
+                },
+                "example": {
+                  "id": "2024-10-18-03-00-00",
+                  "start_time": "2024-10-18T03:00:00",
+                  "end_time": "2024-10-18T03:15:32",
+                  "process_id": 1234
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "List Clients",
+        "operationId": "list_clients_clients_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter clients using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, label, scopes",
+              "title": "Query"
+            },
+            "description": "Filter clients using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, label, scopes",
+            "examples": {
+              "by_id": {
+                "summary": "Filter by ID",
+                "value": "id|my-client"
+              },
+              "by_label": {
+                "summary": "Filter by label",
+                "value": "label|Production Client"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order results using format 'field|direction'. Valid fields: id, label. Direction: asc or desc",
+              "title": "Order"
+            },
+            "description": "Order results using format 'field|direction'. Valid fields: id, label. Direction: asc or desc",
+            "examples": {
+              "by_id": {
+                "summary": "Order by ID",
+                "value": "id|asc"
+              },
+              "by_label": {
+                "summary": "Order by label",
+                "value": "label|asc"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of clients",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientListResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "client_a1b2c3d4e5f6",
+                      "label": "Production API Client",
+                      "scopes": [
+                        "*"
+                      ]
+                    },
+                    {
+                      "id": "client_x9y8z7w6v5u4",
+                      "label": "Backup Automation Service",
+                      "scopes": [
+                        "*"
+                      ]
+                    }
+                  ],
+                  "pagination": {
+                    "total": 8,
+                    "page": 1,
+                    "per_page": 25,
+                    "total_pages": 1
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Create Client",
+        "description": "Create a new client with an auto-generated ID and secret.\n\nArgs:\n    request: The create client request containing the label\n    _: The verified token payload (not used directly)\n\nReturns:\n    A dictionary with the new client information,\n    including the generated ID and secret",
+        "operationId": "create_client_clients_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientRequest"
+              },
+              "examples": {
+                "production_client": {
+                  "summary": "Production API client",
+                  "description": "Create a client for production API access",
+                  "value": {
+                    "label": "Production API Client"
+                  }
+                },
+                "backup_automation": {
+                  "summary": "Backup automation client",
+                  "description": "Create a client for automated backup operations",
+                  "value": {
+                    "label": "Backup Automation Service"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Client created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientWithSecretResponse"
+                },
+                "example": {
+                  "id": "client_a1b2c3d4e5f6",
+                  "secret": "secret_x9y8z7w6v5u4t3s2r1q0",
+                  "label": "Production API Client",
+                  "scopes": [
+                    "*"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clients/{client_id}": {
+      "delete": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Delete Client",
+        "operationId": "delete_client_clients__client_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Client deleted successfully"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Update Client",
+        "description": "Update a client's label.\n\nArgs:\n    client_id: The ID of the client to update\n    request: The update client request containing the new label\n    _: The verified token payload (not used directly)\n\nReturns:\n    A dictionary with the updated client information\n\nRaises:\n    HTTPException: If the client could not be found",
+        "operationId": "update_client_clients__client_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClientRequest"
+              },
+              "examples": {
+                "rename_client": {
+                  "summary": "Rename client",
+                  "description": "Update the label of an existing client",
+                  "value": {
+                    "label": "Updated Production Client"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Client updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponse"
+                },
+                "example": {
+                  "id": "client_a1b2c3d4e5f6",
+                  "label": "Updated Production Client",
+                  "scopes": [
+                    "*"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/restore": {
+      "post": {
+        "tags": [
+          "Restores"
+        ],
+        "summary": "Create Restore",
+        "description": "Restore a backup to database or folder.\n\n**This is an asynchronous operation** - returns 202 Accepted immediately\nand the restore runs in the background. Use the returned `link` to poll\nfor completion status at `/status/{pid}`.\n\nRestores a backup and all its dependencies to either the MySQL data directory\nor a custom folder for inspection. For incremental backups, all required base\nbackups are automatically included in the restore operation.\n\n**Requirements for database restore:**\n- MySQL/MariaDB server must be stopped\n- Data directory must be empty\n- Valid credentials file must exist\n\n**For folder restore:**\n- No special requirements, data is restored to a temporary inspection folder\n\n**Response:**\n- Returns immediately with 202 Accepted\n- Includes `link` field pointing to `/status/{pid}` for progress tracking\n- Includes `resource_id` (the backup ID being restored)",
+        "operationId": "create_restore_restore_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreRequest"
+              },
+              "examples": {
+                "restore_to_database": {
+                  "summary": "Restore to database",
+                  "description": "Restore a backup directly to MySQL/MariaDB data directory",
+                  "value": {
+                    "id": "2024-10-17-03-00-00",
+                    "target": "database"
+                  }
+                },
+                "restore_to_folder": {
+                  "summary": "Restore to folder for inspection",
+                  "description": "Restore a backup to a temporary folder for inspection",
+                  "value": {
+                    "id": "2024-10-17-03-00-00",
+                    "target": "folder"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Restore accepted and started - processing in background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                },
+                "example": {
+                  "status": "running",
+                  "link": "/status/5678",
+                  "pid": "5678",
+                  "resource_id": "2024-10-17-03-00-00"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Backup not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Backup with id xyz not found"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable - server configuration issue",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "server_running": {
+                    "summary": "MySQL server still running",
+                    "value": {
+                      "detail": "cannot restore to database, MySQL/MariaDb server is not stopped"
+                    }
+                  },
+                  "data_dir_not_empty": {
+                    "summary": "Data directory not empty",
+                    "value": {
+                      "detail": "cannot restore to database, mysql/mariadb data directory is not empty (usually /var/lib/mysql)"
+                    }
+                  },
+                  "credentials_missing": {
+                    "summary": "Credentials file missing",
+                    "value": {
+                      "detail": "credentials file not found or missing [client-dbcalm] section"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/restores": {
+      "get": {
+        "tags": [
+          "Restores"
+        ],
+        "summary": "List Restores",
+        "operationId": "list_restores_restores_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter restores using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, start_time, end_time, target, target_path, backup_id, backup_timestamp, process_id",
+              "title": "Query"
+            },
+            "description": "Filter restores using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, start_time, end_time, target, target_path, backup_id, backup_timestamp, process_id",
+            "examples": {
+              "by_backup_id": {
+                "summary": "Filter by backup ID",
+                "value": "backup_id|2024-10-17-12-00-00"
+              },
+              "by_target": {
+                "summary": "Filter by target type",
+                "value": "target|database"
+              },
+              "by_date_range": {
+                "summary": "Filter by start time",
+                "value": "start_time|gte|2024-10-01T00:00:00"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order results using format 'field|direction'. Valid fields: id, start_time, end_time, backup_id. Direction: asc or desc",
+              "title": "Order"
+            },
+            "description": "Order results using format 'field|direction'. Valid fields: id, start_time, end_time, backup_id. Direction: asc or desc",
+            "examples": {
+              "newest_first": {
+                "summary": "Newest first",
+                "value": "start_time|desc"
+              },
+              "by_backup": {
+                "summary": "Order by backup ID",
+                "value": "backup_id|asc"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of restores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreListResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": 1,
+                      "start_time": "2024-10-18T10:15:00",
+                      "end_time": "2024-10-18T10:25:42",
+                      "target": "database",
+                      "target_path": "/var/lib/mysql",
+                      "backup_id": "2024-10-17-03-00-00",
+                      "backup_timestamp": "2024-10-17T03:00:00",
+                      "process_id": 5678
+                    },
+                    {
+                      "id": 2,
+                      "start_time": "2024-10-17T14:30:00",
+                      "end_time": "2024-10-17T14:35:12",
+                      "target": "folder",
+                      "target_path": "/tmp/dbcalm-restore-2024-10-17-14-30-00",
+                      "backup_id": "2024-10-16-03-00-00",
+                      "backup_timestamp": "2024-10-16T03:00:00",
+                      "process_id": 5677
+                    }
+                  ],
+                  "pagination": {
+                    "total": 12,
+                    "page": 1,
+                    "per_page": 25,
+                    "total_pages": 1
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processes": {
+      "get": {
+        "tags": [
+          "Processes"
+        ],
+        "summary": "List Processes",
+        "operationId": "list_processes_processes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter processes using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, command, command_id, pid, status, return_code, start_time, end_time, type",
+              "title": "Query"
+            },
+            "description": "Filter processes using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, command, command_id, pid, status, return_code, start_time, end_time, type",
+            "examples": {
+              "by_status": {
+                "summary": "Filter by status",
+                "value": "status|completed"
+              },
+              "by_type": {
+                "summary": "Filter by type",
+                "value": "type|backup"
+              },
+              "by_date_range": {
+                "summary": "Filter by start time",
+                "value": "start_time|gte|2024-10-01T00:00:00"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order results using format 'field|direction'. Valid fields: id, start_time, end_time, status. Direction: asc or desc",
+              "title": "Order"
+            },
+            "description": "Order results using format 'field|direction'. Valid fields: id, start_time, end_time, status. Direction: asc or desc",
+            "examples": {
+              "newest_first": {
+                "summary": "Newest first",
+                "value": "start_time|desc"
+              },
+              "by_status": {
+                "summary": "Order by status",
+                "value": "status|asc"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of processes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessListResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": 1234,
+                      "command": "mariabackup --backup --target-dir=/var/backups/dbcalm/2024-10-18-03-00-00",
+                      "command_id": "full_backup",
+                      "pid": 98765,
+                      "status": "completed",
+                      "output": "Backup completed successfully\\n",
+                      "return_code": 0,
+                      "start_time": "2024-10-18T03:00:00",
+                      "end_time": "2024-10-18T03:15:32",
+                      "type": "backup",
+                      "args": {
+                        "id": "2024-10-18-03-00-00"
+                      }
+                    },
+                    {
+                      "id": 1235,
+                      "command": "mariabackup --backup --target-dir=/var/backups/dbcalm/2024-10-18-09-00-00 --incremental-basedir=/var/backups/dbcalm/2024-10-18-03-00-00",
+                      "command_id": "incremental_backup",
+                      "pid": 98766,
+                      "status": "running",
+                      "output": "Starting incremental backup...\\n",
+                      "start_time": "2024-10-18T09:00:00",
+                      "type": "backup",
+                      "args": {
+                        "id": "2024-10-18-09-00-00",
+                        "from_backup_id": "2024-10-18-03-00-00"
+                      }
+                    }
+                  ],
+                  "pagination": {
+                    "total": 156,
+                    "page": 1,
+                    "per_page": 25,
+                    "total_pages": 7
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schedules": {
+      "get": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "List Schedules",
+        "operationId": "list_schedules_schedules_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter schedules using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, backup_type, frequency, day_of_week, day_of_month, hour, minute, interval_value, interval_unit, enabled, created_at, updated_at",
+              "title": "Query"
+            },
+            "description": "Filter schedules using format 'field|value' or 'field|operator|value'. Operators: eq, ne, gt, gte, lt, lte, in, nin. Valid fields: id, backup_type, frequency, day_of_week, day_of_month, hour, minute, interval_value, interval_unit, enabled, created_at, updated_at",
+            "examples": {
+              "enabled_only": {
+                "summary": "Filter enabled schedules",
+                "value": "enabled|true"
+              },
+              "by_frequency": {
+                "summary": "Filter by frequency",
+                "value": "frequency|daily"
+              },
+              "by_backup_type": {
+                "summary": "Filter by backup type",
+                "value": "backup_type|full"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order results using format 'field|direction'. Valid fields: id, created_at, updated_at, enabled. Direction: asc or desc",
+              "title": "Order"
+            },
+            "description": "Order results using format 'field|direction'. Valid fields: id, created_at, updated_at, enabled. Direction: asc or desc",
+            "examples": {
+              "newest_first": {
+                "summary": "Newest first",
+                "value": "created_at|desc"
+              },
+              "by_enabled": {
+                "summary": "Enabled first",
+                "value": "enabled|desc"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of schedules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleListResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": 1,
+                      "backup_type": "full",
+                      "frequency": "daily",
+                      "hour": 3,
+                      "minute": 0,
+                      "enabled": true,
+                      "created_at": "2024-10-15T10:30:00",
+                      "updated_at": "2024-10-15T10:30:00"
+                    },
+                    {
+                      "id": 2,
+                      "backup_type": "incremental",
+                      "frequency": "interval",
+                      "interval_value": 6,
+                      "interval_unit": "hours",
+                      "enabled": true,
+                      "created_at": "2024-10-16T14:15:00",
+                      "updated_at": "2024-10-16T14:15:00"
+                    }
+                  ],
+                  "pagination": {
+                    "total": 5,
+                    "page": 1,
+                    "per_page": 25,
+                    "total_pages": 1
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Create Schedule",
+        "operationId": "create_schedule_schedules_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleRequest"
+              },
+              "examples": {
+                "daily_full_backup": {
+                  "summary": "Daily full backup at 3:00 AM",
+                  "description": "Schedule a daily full backup at 3:00 AM",
+                  "value": {
+                    "backup_type": "full",
+                    "frequency": "daily",
+                    "hour": 3,
+                    "minute": 0,
+                    "enabled": true
+                  }
+                },
+                "weekly_incremental_backup": {
+                  "summary": "Weekly incremental backup on Sundays",
+                  "description": "Schedule incremental backup every Sunday at 3:30 AM",
+                  "value": {
+                    "backup_type": "incremental",
+                    "frequency": "weekly",
+                    "day_of_week": 0,
+                    "hour": 3,
+                    "minute": 30,
+                    "enabled": true
+                  }
+                },
+                "monthly_backup": {
+                  "summary": "Monthly backup on 1st at midnight",
+                  "description": "Schedule monthly full backup on 1st day at 00:00",
+                  "value": {
+                    "backup_type": "full",
+                    "frequency": "monthly",
+                    "day_of_month": 1,
+                    "hour": 0,
+                    "minute": 0,
+                    "enabled": true
+                  }
+                },
+                "interval_backup": {
+                  "summary": "Every 4 hours incremental backup",
+                  "description": "Schedule incremental backup every 4 hours",
+                  "value": {
+                    "backup_type": "incremental",
+                    "frequency": "interval",
+                    "interval_value": 4,
+                    "interval_unit": "hours",
+                    "enabled": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                },
+                "example": {
+                  "id": 1,
+                  "backup_type": "full",
+                  "frequency": "daily",
+                  "hour": 3,
+                  "minute": 0,
+                  "enabled": true,
+                  "created_at": "2024-10-18T10:30:00",
+                  "updated_at": "2024-10-18T10:30:00"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schedules/{schedule_id}": {
+      "get": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Get Schedule",
+        "operationId": "get_schedule_schedules__schedule_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schedule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                },
+                "example": {
+                  "id": 1,
+                  "backup_type": "full",
+                  "frequency": "daily",
+                  "hour": 3,
+                  "minute": 0,
+                  "enabled": true,
+                  "created_at": "2024-10-15T10:30:00",
+                  "updated_at": "2024-10-15T10:30:00"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Update Schedule",
+        "operationId": "update_schedule_schedules__schedule_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schedule Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleRequest"
+              },
+              "examples": {
+                "update_time": {
+                  "summary": "Update schedule time",
+                  "description": "Change daily backup time to 4:15 AM",
+                  "value": {
+                    "backup_type": "incremental",
+                    "frequency": "daily",
+                    "hour": 4,
+                    "minute": 15,
+                    "enabled": true
+                  }
+                },
+                "disable_schedule": {
+                  "summary": "Disable schedule",
+                  "description": "Disable a schedule without deleting it",
+                  "value": {
+                    "backup_type": "full",
+                    "frequency": "weekly",
+                    "day_of_week": 0,
+                    "hour": 3,
+                    "minute": 0,
+                    "enabled": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                },
+                "example": {
+                  "id": 1,
+                  "backup_type": "incremental",
+                  "frequency": "daily",
+                  "hour": 4,
+                  "minute": 15,
+                  "enabled": true,
+                  "created_at": "2024-10-18T10:30:00",
+                  "updated_at": "2024-10-18T14:45:00"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Delete Schedule",
+        "operationId": "delete_schedule_schedules__schedule_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schedule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResponse"
+                },
+                "example": {
+                  "message": "Schedule deleted successfully"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/status/{status_id}": {
+      "get": {
+        "tags": [
+          "Status"
+        ],
+        "summary": "Get Status",
+        "operationId": "get_status_status__status_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Status Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Process status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                },
+                "examples": {
+                  "running": {
+                    "summary": "Process still running",
+                    "value": {
+                      "status": "running",
+                      "link": "/status/1234",
+                      "pid": "1234",
+                      "resource_id": "2024-10-18-03-00-00"
+                    }
+                  },
+                  "completed": {
+                    "summary": "Process completed successfully",
+                    "value": {
+                      "status": "completed",
+                      "link": "/status/1234",
+                      "pid": "1234",
+                      "resource_id": "2024-10-18-03-00-00"
+                    }
+                  },
+                  "failed": {
+                    "summary": "Process failed",
+                    "value": {
+                      "status": "failed",
+                      "link": "/status/1234",
+                      "pid": "1234",
+                      "resource_id": "2024-10-18-03-00-00"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthCodeResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Authorization code for token exchange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "AuthCodeResponse",
+        "description": "Response model for authorization endpoint."
+      },
+      "BackupListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BackupResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of backups"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationInfo",
+            "description": "Pagination metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "BackupListResponse",
+        "description": "Response model for paginated list of backups."
+      },
+      "BackupRequest": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/BackupType",
+            "description": "Type of backup: 'full' (complete backup) or 'incremental' (changes since base backup)"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Optional custom ID for the backup. Auto-generated timestamp (YYYY-MM-DD-HH-MM-SS) if not provided"
+          },
+          "from_backup_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Backup Id",
+            "description": "For incremental backups: ID of the base backup. Auto-detected (uses latest backup) if not provided"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "BackupRequest",
+        "description": "Request to create a new backup."
+      },
+      "BackupResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique backup identifier"
+          },
+          "from_backup_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Backup Id",
+            "description": "ID of the base backup for incremental backups, null for full backups"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time",
+            "description": "When the backup started"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time",
+            "description": "When the backup completed (null if still running)"
+          },
+          "process_id": {
+            "type": "integer",
+            "title": "Process Id",
+            "description": "ID of the process that created this backup"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "from_backup_id",
+          "start_time",
+          "end_time",
+          "process_id"
+        ],
+        "title": "BackupResponse",
+        "description": "Response model for a single backup."
+      },
+      "BackupType": {
+        "type": "string",
+        "enum": [
+          "full",
+          "incremental"
+        ],
+        "title": "BackupType"
+      },
+      "ClientListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClientResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of clients (secrets excluded)"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationInfo",
+            "description": "Pagination metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "ClientListResponse",
+        "description": "Response model for paginated list of clients."
+      },
+      "ClientResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique client identifier"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Human-readable label for the client"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes",
+            "description": "List of OAuth2 scopes granted to the client"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "scopes"
+        ],
+        "title": "ClientResponse",
+        "description": "Response model for a single client."
+      },
+      "ClientWithSecretResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique client identifier"
+          },
+          "secret": {
+            "type": "string",
+            "title": "Secret",
+            "description": "Client secret (only shown once at creation)"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Human-readable label for the client"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes",
+            "description": "List of OAuth2 scopes granted to the client"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "secret",
+          "label",
+          "scopes"
+        ],
+        "title": "ClientWithSecretResponse",
+        "description": "Response model for client creation (includes secret)."
+      },
+      "CreateClientRequest": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "CreateClientRequest",
+        "description": "Request model for creating a new client."
+      },
+      "DeleteResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Confirmation message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "DeleteResponse",
+        "description": "Generic response for successful deletion."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PaginationInfo": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of items across all pages"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "description": "Current page number (1-indexed)"
+          },
+          "per_page": {
+            "type": "integer",
+            "title": "Per Page",
+            "description": "Number of items per page"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages",
+            "description": "Total number of pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "per_page",
+          "total_pages"
+        ],
+        "title": "PaginationInfo",
+        "description": "Pagination metadata for list responses."
+      },
+      "ProcessListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of processes"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationInfo",
+            "description": "Pagination metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "ProcessListResponse",
+        "description": "Response model for paginated list of processes."
+      },
+      "ProcessResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Unique process identifier"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command",
+            "description": "Command that was executed"
+          },
+          "command_id": {
+            "type": "string",
+            "title": "Command Id",
+            "description": "Command type identifier"
+          },
+          "pid": {
+            "type": "integer",
+            "title": "Pid",
+            "description": "Operating system process ID"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Process status (running, completed, failed, etc.)"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output",
+            "description": "Standard output from the process"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error output from the process"
+          },
+          "return_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Code",
+            "description": "Process exit code (null if still running)"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time",
+            "description": "When the process started"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time",
+            "description": "When the process completed (null if still running)"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Type of process (backup, restore, etc.)"
+          },
+          "args": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Args",
+            "description": "Arguments passed to the command"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "command",
+          "command_id",
+          "pid",
+          "status",
+          "output",
+          "error",
+          "return_code",
+          "start_time",
+          "end_time",
+          "type",
+          "args"
+        ],
+        "title": "ProcessResponse",
+        "description": "Response model for a single process."
+      },
+      "RestoreListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RestoreResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of restores"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationInfo",
+            "description": "Pagination metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "RestoreListResponse",
+        "description": "Response model for paginated list of restores."
+      },
+      "RestoreRequest": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "ID of the backup to restore"
+          },
+          "target": {
+            "$ref": "#/components/schemas/RestoreTarget",
+            "description": "Restore target: 'database' (to MySQL data dir) or 'folder' (to custom folder for inspection)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "target"
+        ],
+        "title": "RestoreRequest",
+        "description": "Request to restore a backup."
+      },
+      "RestoreResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Unique restore identifier"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time",
+            "description": "When the restore started"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time",
+            "description": "When the restore completed (null if still running)"
+          },
+          "target": {
+            "$ref": "#/components/schemas/RestoreTarget",
+            "description": "Restore target (database or folder)"
+          },
+          "target_path": {
+            "type": "string",
+            "title": "Target Path",
+            "description": "Path where data was restored"
+          },
+          "backup_id": {
+            "type": "string",
+            "title": "Backup Id",
+            "description": "ID of the backup that was restored"
+          },
+          "backup_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Timestamp",
+            "description": "Timestamp of the backup"
+          },
+          "process_id": {
+            "type": "integer",
+            "title": "Process Id",
+            "description": "ID of the restore process"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "start_time",
+          "end_time",
+          "target",
+          "target_path",
+          "backup_id",
+          "backup_timestamp",
+          "process_id"
+        ],
+        "title": "RestoreResponse",
+        "description": "Response model for a single restore."
+      },
+      "RestoreTarget": {
+        "type": "string",
+        "enum": [
+          "database",
+          "folder"
+        ],
+        "title": "RestoreTarget"
+      },
+      "ScheduleListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of schedules"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationInfo",
+            "description": "Pagination metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "ScheduleListResponse",
+        "description": "Response model for paginated list of schedules."
+      },
+      "ScheduleRequest": {
+        "properties": {
+          "backup_type": {
+            "type": "string",
+            "title": "Backup Type"
+          },
+          "frequency": {
+            "type": "string",
+            "title": "Frequency"
+          },
+          "day_of_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Week"
+          },
+          "day_of_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Month"
+          },
+          "hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour"
+          },
+          "minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minute"
+          },
+          "interval_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Value"
+          },
+          "interval_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Unit"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "backup_type",
+          "frequency"
+        ],
+        "title": "ScheduleRequest"
+      },
+      "ScheduleResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Unique schedule identifier"
+          },
+          "backup_type": {
+            "type": "string",
+            "title": "Backup Type",
+            "description": "Type of backup (full or incremental)"
+          },
+          "frequency": {
+            "type": "string",
+            "title": "Frequency",
+            "description": "Schedule frequency (daily, weekly, monthly, hourly, interval)"
+          },
+          "day_of_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Week",
+            "description": "Day of week for weekly schedules (0-6, 0=Sunday)"
+          },
+          "day_of_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Month",
+            "description": "Day of month for monthly schedules (1-28)"
+          },
+          "hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour",
+            "description": "Hour for scheduled backups (0-23)"
+          },
+          "minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minute",
+            "description": "Minute for scheduled backups (0-59)"
+          },
+          "interval_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Value",
+            "description": "Interval value for interval schedules"
+          },
+          "interval_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Unit",
+            "description": "Interval unit (minutes or hours)"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Whether the schedule is enabled"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "When the schedule was created"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "When the schedule was last updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "backup_type",
+          "frequency",
+          "day_of_week",
+          "day_of_month",
+          "hour",
+          "minute",
+          "interval_value",
+          "interval_unit",
+          "enabled",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ScheduleResponse",
+        "description": "Response model for a single schedule."
+      },
+      "StatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "pid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pid"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "StatusResponse"
+      },
+      "TokenAuthCodeRequest": {
+        "properties": {
+          "grant_type": {
+            "type": "string",
+            "const": "authorization_code",
+            "title": "Grant Type",
+            "description": "OAuth2 grant type (must be 'authorization_code')"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Authorization code from /auth/authorize endpoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grant_type",
+          "code"
+        ],
+        "title": "TokenAuthCodeRequest",
+        "description": "OAuth2 token request using authorization code grant type."
+      },
+      "TokenClientRequest": {
+        "properties": {
+          "grant_type": {
+            "type": "string",
+            "const": "client_credentials",
+            "title": "Grant Type",
+            "description": "OAuth2 grant type (must be 'client_credentials')"
+          },
+          "client_id": {
+            "type": "string",
+            "title": "Client Id",
+            "description": "Client identifier"
+          },
+          "client_secret": {
+            "type": "string",
+            "title": "Client Secret",
+            "description": "Client secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grant_type",
+          "client_id",
+          "client_secret"
+        ],
+        "title": "TokenClientRequest",
+        "description": "OAuth2 token request using client credentials grant type."
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type"
+        ],
+        "title": "TokenResponse"
+      },
+      "UpdateClientRequest": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "UpdateClientRequest",
+        "description": "Request model for updating a client's label."
+      },
+      "UserLogin": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "UserLogin"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

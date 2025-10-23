@@ -28,6 +28,3 @@ API Endpoints
 -------------
 
 The following interactive documentation shows all available endpoints, request/response schemas, and error codes.
-
-.. redoc::
-   :spec: openapi.json
