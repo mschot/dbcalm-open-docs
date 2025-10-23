@@ -23,7 +23,7 @@ Comprehensive backend API for database backup management.
 
 :doc:`View API Documentation → <api/index>`
 
-Frontend (Coming Soon)
+Frontend
 ----------------------
 
 Web-based interface for monitoring and managing your backups.
