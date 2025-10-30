@@ -27,8 +27,7 @@ Install the package:
 
 .. code-block:: bash
 
-   sudo dpkg -i dbcalm_amd64.deb
-   sudo apt-get install -f  # Installs mariadb-backup dependency if missing
+   sudo apt install ./dbcalm_amd64.deb 
 
 RHEL/CentOS/Rocky/Fedora Installation
 --------------------------------------
@@ -93,7 +92,7 @@ Post-Installation Setup
 Step 1: Create MariaDB Backup User
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-DBCalm needs a MySQL user with backup privileges. Connect to MySQL:
+DBCalm needs a MySQL user with backup privileges. Connect to MySQL with a user that has permissions to create other users:
 
 .. code-block:: bash
 

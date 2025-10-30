@@ -8,7 +8,7 @@ SHELL := /bin/bash
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
-BUILDDIR      = ../marketing/public/docs/html
+BUILDDIR      = ../marketing/public/docs
 VENVDIR       = .venv
 
 # Put it first so that "make" without argument is like "make help".

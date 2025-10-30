@@ -19,7 +19,7 @@ Comprehensive backend API for database backup management.
 * **Automated Backups**: Schedule regular backups of your MariaDB/MySQL databases
 * **Secure API**: OAuth2-based authentication with JWT tokens
 * **Restore Management**: Easy restoration of backups to any point in time
-* **Client Management**: Multi-client support for managing multiple database instances
+* **API Client Management**: Support for multiple API clients to securely access the backup system
 
 :doc:`View API Documentation → <api/index>`
 
